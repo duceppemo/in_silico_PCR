@@ -15,9 +15,9 @@ The longer the reads in the fastq file(s), the better the assembly and the less 
 
 1. Primer pair list (fasta). Headers have to end with “_FWR” and “_REV” for now.
 2. Raw reads (fastq) or genomes (fasta)
-..1. Single or multiple single-end reads
-..2. **One set of paired-end reads**
-..3. Single or multiple genomes (or assemblies)
+  1. Single or multiple single-end reads
+  2. **One set of paired-end reads**
+  3. Single or multiple genomes (or assemblies)
 
 So far I only focused on making it work with compressed paired-end fastq files, as this is what we have the most.
 
