@@ -1,8 +1,8 @@
 ## Description
 
-This tool is an attempt to do in silico PCRs from fastq or fasta files. The jellyfish version can only find perfect matches and takes about 3 times longer to get the same results as the bbduk version. It also only report primer presence or absence. I left it for sentimental values!
+This tool is an attempt to do in silico PCRs from fastq or fasta files. The jellyfish version can only find perfect matches and takes about 3 times longer to get the same results as the bbduk version. It also only reports primer presence or absence. I left it for sentimental values!
 
-**primer\_finder\_bbduk.sh** uses bbduk to find the primer sequences in the fastq/fasta file(s). if fastq file(s) are input,it pulls the matching reads out, which are then assembled with SPAdes. Then the primers are BLASTed on the assembly to try to see if both forward and reverse primers can be found in a single contig, thus a valid PCR product. PCR product length is also reported.
+**primer\_finder\_bbduk.sh** uses bbduk to find the primer sequences in the fastq/fasta file(s). If fastq file(s) are input, it pulls the matching reads out, which are then assembled with SPAdes. Then the primers are BLASTed on the assembly to try to see if both forward and reverse primers can be found in a single contig, thus a valid PCR product. PCR product length is also reported.
 
 The longer the reads in the fastq file(s), the better the assembly and the less false negatives.
 
