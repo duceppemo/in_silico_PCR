@@ -87,10 +87,10 @@ if [ "$paired" -eq 1 ] && [ "$fastq" -ne 1 ]; then
 fi
 
 # check if two files supplied with the -m option
-if [ "$fastq" ] && [ "$paired" ] && [ "$#" -eq 1 ]; then
+if [ "$fastq" -eq 1 ] && [ "$paired" -eq 1 ] && [ "$#" -eq 1 ]; then
     echo "Please supply two fastq files for paired-end data."
     print_help
-elif [ "$fastq" ] && [ "$paired" ] && [ "$#" -gt 2 ]; then
+elif [ "$fastq" -eq 1 ] && [ "$paired" -eq 1 ] && [ "$#" -gt 2 ]; then
     echo "Only two fastq input files can be used when using the \"-m\" option."
     print_help
 fi
@@ -304,7 +304,7 @@ shortest="${sizes[0]}"
 ########################
 
 
-if [ "$paired" -eq 1 ] && [ "$paired" -eq 1 ]; then  # fastq paried-end
+if [ "$fastq" -eq 1 ] && [ "$paired" -eq 1 ]; then  # fastq paried-end
     for s in "${sizes[@]}"; do
         bbduk.sh "$memJava" \
             overwrite=t \
