@@ -12,7 +12,7 @@
 
 function print_help() {
     echo "\
-Usage: bash primer_finder_bbduk.sh [-h] -f[-m]|-q -p <primers.txt> -o <./"${sampleName}"/> [-n 1] <sample_file_1> [<sample_file_n>]
+Usage: bash primer_finder_bbduk.sh [-h] -f[-m]|-q -p <primers.txt> -o <output_folder> [-n 1] <sample_file_1> [<sample_file_n>]
 
 Mandatory flags:
     
