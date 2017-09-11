@@ -322,13 +322,7 @@ if [ "$fastq" -eq 1 ] && [ "$paired" -eq 1 ]; then  # fastq paried-end
             outm2="${output}"/"${sampleName}"_"${s}"-mer_R2.fastq.gz \
             ziplevel=5
     done
-# elif [ "$fastq" -eq 1 ] && [ "$paired" -eq 0 ]; then  # fastq single end
-#     bbduk.sh "$memJava" \
-#         k="$longest" \
-#         in="$1" \
-#         ref="$primers" \
-#         stats=""${output}"/"${sampleName}"_oligos.txt"
-else  # fasta
+elif [ "$fastq" -eq 1 ] && [ "$paired" -eq 0 ]; then  # fastq single end
     for s in "${sizes[@]}"; do
         bbduk.sh "$memJava" \
             overwrite=t \
@@ -340,6 +334,18 @@ else  # fasta
             ref="${output}"/"${sampleName}"_primers_"${s}"-mer.fasta \
             stats="${output}"/"${sampleName}"_"${s}"-mer.counts \
             outm="${output}"/"${sampleName}"_"${s}"-mer_R1.fasta
+    done
+else  # fasta
+    for s in "${sizes[@]}"; do
+        bbduk.sh "$memJava" \
+            overwrite=t \
+            maskmiddle=f \
+            rcomp=t \
+            k="$s" \
+            hdist="$mismatch" \
+            in="$1" \
+            ref="${output}"/"${sampleName}"_primers_"${s}"-mer.fasta \
+            stats="${output}"/"${sampleName}"_"${s}"-mer.counts
     done
 fi
 
@@ -403,70 +409,94 @@ done < "$primers"
 ####################
 
 
-# Concatenate all R1s and all the R2s
+if [ "$fastq" -eq 1 ]; then
+    #Get the read length
+    read_length=$(zcat "${output}"/"${sampleName}"_R1.fastq.gz \
+        | sed -n '2p' \
+        | tr -d "\n" \
+        | wc -m)
 
-cat "${output}"/"${sampleName}"_*-mer_R1.fastq.gz \
-    > "${output}"/"${sampleName}"_R1.fastq.gz
+    # Concatenate all R1s and all the R2s
+    cat "${output}"/"${sampleName}"_*-mer_R1.fastq.gz \
+        > "${output}"/"${sampleName}"_R1.fastq.gz
 
-cat "${output}"/"${sampleName}"_*-mer_R2.fastq.gz \
-    > "${output}"/"${sampleName}"_R2.fastq.gz
+    if [ "$paired" -eq 1 ]; then  # fastq paried-end
+        # Concatenate all R1s and all the R2s
+        cat "${output}"/"${sampleName}"_*-mer_R2.fastq.gz \
+            > "${output}"/"${sampleName}"_R2.fastq.gz
+    fi
 
-rm "${output}"/"${sampleName}"_*-mer_R*.fastq.gz
+    #cleanup
+    rm "${output}"/"${sampleName}"_*-mer_R*.fastq.gz
 
-#Get the read length
-read_length=$(zcat "${output}"/"${sampleName}"_R1.fastq.gz \
-    | sed -n '2p' \
-    | tr -d "\n" \
-    | wc -m)
 
-# Adjust kmer sizes for SPAdes according to read size
-if [ "$read_length" -le 100 ]; then
-    kmer="21,33,55,77"
+    # Adjust kmer sizes for SPAdes according to read size
+    if [ "$read_length" -le 100 ]; then
+        kmer="21,33,55,77"
 
-    echo "
-"$read_length"bp reads detected.
-Accuraty of detection of in silico PCR products will likely be negatively affected.
+        echo "
+        "${read_length}"bp reads detected.
+        Accuraty of detection of in silico PCR products will likely be negatively affected.
 
-PCR primers may be found on different contigs and will be rejected as a valid PCR product.
-Best performance is achieve using Illumina 300bp paired-end reads.
-" | tee -a "${output}"/log.txt
-else
-    kmer="21,33,55,77,99,127"
+        PCR primers may be found on different contigs and will be rejected as a valid PCR product.
+        Best performance is achieve using Illumina 300bp paired-end reads." \
+        | tee -a "${output}"/log.txt
+    else
+        kmer="21,33,55,77,99,127"
 
-    echo "
-"$read_length"bp reads detected.
-" | tee -a "${output}"/log.txt
+        echo ""${read_length}"bp reads detected." \
+        | tee -a "${output}"/log.txt
+    fi
+
+    # de novo assembly of reads
+    [ -d "${output}"/spades ] && rm -rf "${output}"/spades
+    spades.py \
+        --only-assembler \
+        -t "$cpu" \
+        -m "$mem" \
+        -k "$kmer" \
+        --pe1-1 "${output}"/"${sampleName}"_R1.fastq.gz \
+        --pe1-2 "${output}"/"${sampleName}"_R2.fastq.gz \
+        -o "${output}"/spades
+
+
+    #make blast database with assembly
+    makeblastdb \
+        -in "${output}"/spades/contigs.fasta \
+        -dbtype "nucl" \
+        -parse_seqids \
+        -hash_index
+
+    #blast primers on assembly
+    blastn \
+        -query "$primers" \
+        -db "${output}"/spades/contigs.fasta \
+        -out "${output}"/blastn.tsv \
+        -evalue 1e-3 \
+        -word_size 8 \
+        -outfmt 6 \
+        -max_target_seqs 1 \
+        -culling_limit 1
+
+elif [ "$fasta" -eq 1 ]; then
+    makeblastdb \
+        -in "$1" \
+        -out "${output}"/"${sampleName}" \
+        -dbtype "nucl" \
+        -parse_seqids \
+        -hash_index
+
+    #blast primers on assembly
+    blastn \
+        -query "$primers" \
+        -db "${output}"/"${sampleName}" \
+        -out "${output}"/blastn.tsv \
+        -evalue 1e-3 \
+        -word_size 8 \
+        -outfmt 6 \
+        -max_target_seqs 1 \
+        -culling_limit 1
 fi
-
-# de novo assembly of reads
-[ -d "${output}"/spades ] && rm -rf "${output}"/spades
-spades.py \
-    --only-assembler \
-    -t "$cpu" \
-    -m "$mem" \
-    -k "$kmer" \
-    --pe1-1 "${output}"/"${sampleName}"_R1.fastq.gz \
-    --pe1-2 "${output}"/"${sampleName}"_R2.fastq.gz \
-    -o "${output}"/spades
-
-
-#make blast database with assembly
-makeblastdb \
-    -in "${output}"/spades/contigs.fasta \
-    -dbtype "nucl" \
-    -parse_seqids \
-    -hash_index
-
-#blast primers on assembly
-blastn \
-    -query "$primers" \
-    -db "${output}"/spades/contigs.fasta \
-    -out "${output}"/blastn.tsv \
-    -evalue 1e-3 \
-    -word_size 8 \
-    -outfmt 6 \
-    -max_target_seqs 1 \
-    -culling_limit 1
 
 #remove duplicates
 cat "${output}"/blastn.tsv | sort -u -r -k1,1 > "${output}"/tmp
@@ -543,3 +573,5 @@ do
     fi
 done          
 IFS=$old_IFS  # restore default field separator 
+
+# TODO -> file cleanup
