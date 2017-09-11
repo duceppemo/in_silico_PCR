@@ -12,7 +12,7 @@
 
 function print_help() {
     echo "\
-Usage: bash primer_finder_bbduk.sh [-h] -f[-m]|-q -p <primers.txt> -o <./report/> [-n 1] <sample_file_1> [<sample_file_n>]
+Usage: bash primer_finder_bbduk.sh [-h] -f[-m]|-q -p <primers.txt> -o <./"${sampleName}"/> [-n 1] <sample_file_1> [<sample_file_n>]
 
 Mandatory flags:
     
@@ -368,7 +368,7 @@ rm "${output}"/"${sampleName}"_primers_*-mer.fasta
 ##############
 
 
-[ -e "${output}"/report_bbduk.tsv ] && rm "${output}"/report_bbduk.tsv
+[ -e "${output}"/"${sampleName}"_bbduk.tsv ] && rm "${output}"/"${sampleName}"_bbduk.tsv
 
 #make list of primer sizes
 while IFS= read -r line; do
@@ -391,7 +391,7 @@ while IFS= read -r line; do
         counts=$(cat "${output}"/"${sampleName}".counts.txt | grep -wF "$primer_name" | cut -f 2)
         [ "$counts" ] || counts=0
 
-        printf "%s\t%s\t%s\n" "$primer_name" "$l" "$counts" | tee -a "${output}"/report_bbduk.tsv
+        printf "%s\t%s\t%s\n" "$primer_name" "$l" "$counts" | tee -a "${output}"/"${sampleName}"_bbduk.tsv
     fi
 done < "$primers"
 
