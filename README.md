@@ -7,7 +7,7 @@ This tool is an attempt to do in silico PCRs from fastq or fasta files. The jell
 The longer the reads in the fastq file(s), the better the assembly and the less false negatives.
 
 ## Dependencies
-1. bbduk (http://jgi.doe.gov/data-and-tools/bbtools/bb-tools-user-guide/)
+1. bbduk and dedupe (http://jgi.doe.gov/data-and-tools/bbtools/bb-tools-user-guide/)
 2. SPAdes (http://cab.spbu.ru/software/spades/)
 3. BLAST+ (https://blast.ncbi.nlm.nih.gov/Blast.cgi?PAGE_TYPE=BlastDocs&DOC_TYPE=Download)
 
