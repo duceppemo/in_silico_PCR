@@ -320,7 +320,7 @@ if [ "$fastq" -eq 1 ] && [ "$paired" -eq 1 ]; then  # fastq paried-end
             stats="${output}"/"${sampleName}"_"${s}"-mer.counts \
             outm="${output}"/"${sampleName}"_"${s}"-mer_R1.fastq.gz \
             outm2="${output}"/"${sampleName}"_"${s}"-mer_R2.fastq.gz \
-            ziplevel=5
+            ziplevel=9
     done
 elif [ "$fastq" -eq 1 ] && [ "$paired" -eq 0 ]; then  # fastq single end
     for s in "${sizes[@]}"; do
@@ -333,7 +333,8 @@ elif [ "$fastq" -eq 1 ] && [ "$paired" -eq 0 ]; then  # fastq single end
             in="$1" \
             ref="${output}"/"${sampleName}"_primers_"${s}"-mer.fasta \
             stats="${output}"/"${sampleName}"_"${s}"-mer.counts \
-            outm="${output}"/"${sampleName}"_"${s}"-mer_R1.fasta
+            outm="${output}"/"${sampleName}"_"${s}"-mer_R1.fastq.gz \
+            ziplevel=9
     done
 else  # fasta
     for s in "${sizes[@]}"; do
@@ -345,7 +346,8 @@ else  # fasta
             hdist="$mismatch" \
             in="$1" \
             ref="${output}"/"${sampleName}"_primers_"${s}"-mer.fasta \
-            stats="${output}"/"${sampleName}"_"${s}"-mer.counts
+            stats="${output}"/"${sampleName}"_"${s}"-mer.counts \
+            outm="${output}"/"${sampleName}"_"${s}"-mer.fasta
     done
 fi
 
@@ -479,8 +481,18 @@ if [ "$fastq" -eq 1 ]; then
         -culling_limit 1
 
 elif [ "$fasta" -eq 1 ]; then
+
+    # concatenate contigs
+    cat "${output}"/*-mer.fasta > "${output}"/"${sampleName}".fasta
+
+    #remove duplicate entries
+    dedupe.sh \
+        in="${output}"/"${sampleName}".fasta \
+        out="${output}"/"${sampleName}"_uniq.fasta
+
+    # Create blast database
     makeblastdb \
-        -in "$1" \
+        -in "${output}"/"${sampleName}"_uniq.fasta \
         -out "${output}"/"${sampleName}" \
         -dbtype "nucl" \
         -parse_seqids \
@@ -498,11 +510,11 @@ elif [ "$fasta" -eq 1 ]; then
         -culling_limit 1
 fi
 
-#remove duplicates
+#remove duplicates in blast output
 cat "${output}"/blastn.tsv | sort -u -r -k1,1 > "${output}"/tmp
 mv "${output}"/tmp "${output}"/blastn.tsv
 
-# # Add header to columns
+# Add header to columns
 echo -e "qaccver\tsaccver\tpident\tlength\tmismatch\tgapopen\tqstart\tqend\tsstart\tsend\tevalue\tbitscore" > "${output}"/tmp
 cat "${output}"/blastn.tsv >> "${output}"/tmp
 mv "${output}"/tmp "${output}"/blastn.tsv
@@ -575,3 +587,6 @@ done
 IFS=$old_IFS  # restore default field separator 
 
 # TODO -> file cleanup
+
+# TODO -> Add logic to output the predicted serotype based on PCR results.
+#         Maybe use bbduk output instead of blast output for raw reads.
