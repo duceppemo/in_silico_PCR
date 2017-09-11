@@ -28,6 +28,8 @@ Mandatory flags:
 
     -p      Input primer sequence file to test in fasta format.
 
+    -n      Mismatches allowed. Default is 1.
+
     -o      Output folder.
 
 Optional flag:
