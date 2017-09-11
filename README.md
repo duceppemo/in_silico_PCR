@@ -13,13 +13,11 @@ The longer the reads in the fastq file(s), the better the assembly and the less 
 
 ## Inputs
 
-1. Primer pair list (fasta). Headers have to end with “_FWR” and “_REV” for now.
-2. Raw reads (fastq) or genomes (fasta)
+1. Primer pair list (fasta). Headers have to end with “_FWR” and “_REV”.
+2. Raw reads (fastq) or assembly (fasta)
     * Single or multiple single-end reads
     * **One set of paired-end reads**
     * Single or multiple genomes (or assemblies)
-
-So far I only focused on making it work with compressed paired-end fastq files, as this is what we have the most.
 
 ## Usage
 
@@ -36,6 +34,4 @@ bash primer_finder_bbduk.sh \
 
 ## Notes
 
-My first version was based on Jellyfish. It worked well (just detects primer presence or absence), but when I tested bbduk, I was getting the exact same results in a third of the time. Besides speed (btw it takes between 1-2 min to process a pair of fastq files), the main advantage of using bbduk is that it allows up to 3 mismatches. I use 1 mismatch as default.
-
- 
+The first version was based on Jellyfish. It worked well (just detects primer presence or absence), but when I tested bbduk, I was getting the exact same results in a third of the time. Besides speed (btw it takes between 1-2 min to process a pair of fastq files), the main advantage of using bbduk is that it allows up to 3 mismatches. I use 1 mismatch as default.
