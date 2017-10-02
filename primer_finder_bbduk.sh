@@ -1,6 +1,17 @@
 #!/bin/bash
 
 
+version=0.1
+
+# Author: duceppemo
+
+
+# TODO -> make compatible if more than one single-end fastq or fasta file submitted
+# TODO -> file cleanup
+# TODO -> Bundle working code into functions
+#         Remove redundant code with functions
+
+
 ############
 #          #
 #   Help   #
@@ -8,11 +19,9 @@
 ############
 
 
-#TODO -> Add option for number of mismatches allowed
-
 function print_help() {
     echo "\
-Usage: bash primer_finder_bbduk.sh [-h] -f[-m]|-q -p <primers.txt> -o <output_folder> [-n 1] <sample_file_1> [<sample_file_n>]
+Usage: bash primer_finder_bbduk.sh [-h] -f[-m]|-q -p <primers.txt> -o <output_folder> [-n <1>] <sample_file_1> [<sample_file_n>]
 
 Mandatory flags:
     
@@ -221,7 +230,7 @@ echo -e "Processors: "$cpu"" | tee -a "${output}"/log.txt
 echo -e "Memory: "$mem"G" | tee -a "${output}"/log.txt
 
 #pipeline version
-echo -e "\nprimer_finer_bbduk.sh version 0.1\n" | tee -a "${output}"/log.txt  # $0
+echo -e "\nprimer_finer_bbduk.sh version "$version"\n" | tee -a "${output}"/log.txt  # $0
 
 #check if depenencies are installed
 #if so, log version
@@ -462,6 +471,83 @@ if [ "$fastq" -eq 1 ]; then
         -o "${output}"/spades
 
 
+    ##### 2nd round bainting #####
+
+    # In attempt to try to stich more contigs together and have more positives in the blast
+
+    # Make fasta 2 lines per entry
+    # extract the the the first and the last 21 bases of each contig to fasta file
+    cat "${output}"/spades/contigs.fasta \
+        | awk '{if(substr($0,1,1)==">"){if (p){print "";} print $0} else printf("%s",$0);p++;}END{print ""}' \
+        | sed -n '2~2p' \
+        | awk 'BEGIN {i=0} {a=substr($0,1,21); b=substr($0,length($0)-21,21); i++; print ">"i; print a; i++; print ">"i; print b }' \
+        > "${output}"/extra_baits.fasta
+
+    # go fishing extra reads
+    if [ "$fastq" -eq 1 ] && [ "$paired" -eq 1 ]; then  # fastq paried-end
+        bbduk.sh "$memJava" \
+            overwrite=t \
+            maskmiddle=f \
+            rcomp=t \
+            k=21 \
+            hdist="$mismatch" \
+            in1="$1" \
+            in2="$2" \
+            ref="${output}"/extra_baits.fasta \
+            stats="${output}"/"${sampleName}"_extra_baits.counts \
+            outm="${output}"/"${sampleName}"_extra_baits_R1.fastq.gz \
+            outm2="${output}"/"${sampleName}"_extra_baits_R2.fastq.gz \
+            ziplevel=9
+
+    elif [ "$fastq" -eq 1 ] && [ "$paired" -eq 0 ]; then  # fastq single end
+        bbduk.sh "$memJava" \
+            overwrite=t \
+            maskmiddle=f \
+            rcomp=t \
+            k=21 \
+            hdist="$mismatch" \
+            in="$1" \
+            ref="${output}"/extra_baits.fasta \
+            stats="${output}"/"${sampleName}"_extra_baits.counts \
+            outm="${output}"/"${sampleName}"_extra_baits_R1.fastq.gz \
+            ziplevel=9
+    fi
+
+    # get only useful info from bbduk output
+    cat "${output}"/"${sampleName}"_extra_baits.counts \
+        | grep -vE "^#" \
+        | cut -f 1,2 \
+        > "${output}"/"${sampleName}"_extra_baits.counts.txt  # for info only
+    rm "${output}"/"${sampleName}"_extra_baits.counts
+
+    #redo assembly
+
+    # Concatenate all R1s and all the R2s
+    cat "${output}"/*R1.fastq.gz \
+        > "${output}"/"${sampleName}"_all_R1.fastq.gz
+
+    if [ "$paired" -eq 1 ]; then  # fastq paried-end
+        # Concatenate all R1s and all the R2s
+        cat "${output}"/*R2.fastq.gz \
+            > "${output}"/"${sampleName}"_all_R2.fastq.gz
+    fi
+
+    mv "${output}"/spades "${output}"/spades_1
+
+    [ -d "${output}"/spades ] && rm -rf "${output}"/spades
+    spades.py \
+        --only-assembler \
+        -t "$cpu" \
+        -m "$mem" \
+        -k "$kmer" \
+        --pe1-1 "${output}"/"${sampleName}"_all_R1.fastq.gz \
+        --pe1-2 "${output}"/"${sampleName}"_all_R2.fastq.gz \
+        -o "${output}"/spades
+
+
+     ##### End of 2nd round bainting #####
+
+
     #make blast database with assembly
     makeblastdb \
         -in "${output}"/spades/contigs.fasta \
@@ -585,8 +671,3 @@ do
     fi
 done          
 IFS=$old_IFS  # restore default field separator 
-
-# TODO -> file cleanup
-
-# TODO -> Add logic to output the predicted serotype based on PCR results.
-#         Maybe use bbduk output instead of blast output for raw reads.
