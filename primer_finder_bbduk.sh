@@ -523,12 +523,12 @@ if [ "$fastq" -eq 1 ]; then
     #redo assembly
 
     # Concatenate all R1s and all the R2s
-    cat "${output}"/*R1.fastq.gz \
+    cat "${output}"/"${sampleName}"*R1.fastq.gz \
         > "${output}"/"${sampleName}"_all_R1.fastq.gz
 
     if [ "$paired" -eq 1 ]; then  # fastq paried-end
         # Concatenate all R1s and all the R2s
-        cat "${output}"/*R2.fastq.gz \
+        cat "${output}"/"${sampleName}"*R2.fastq.gz \
             > "${output}"/"${sampleName}"_all_R2.fastq.gz
     fi
 
