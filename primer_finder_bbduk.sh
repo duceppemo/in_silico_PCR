@@ -460,7 +460,7 @@ if [ "$fastq" -eq 1 ]; then
     fi
 
     # de novo assembly of reads
-    [ -d "${output}"/spades ] && rm -rf "${output}"/spades
+    [ -d "${output}"/spades1 ] && rm -rf "${output}"/spades1
     spades.py \
         --only-assembler \
         -t "$cpu" \
@@ -468,7 +468,7 @@ if [ "$fastq" -eq 1 ]; then
         -k "$kmer" \
         --pe1-1 "${output}"/"${sampleName}"_R1.fastq.gz \
         --pe1-2 "${output}"/"${sampleName}"_R2.fastq.gz \
-        -o "${output}"/spades
+        -o "${output}"/spades1
 
 
     ##### 2nd round bainting #####
@@ -477,7 +477,7 @@ if [ "$fastq" -eq 1 ]; then
 
     # Make fasta 2 lines per entry
     # extract the the the first and the last 21 bases of each contig to fasta file
-    cat "${output}"/spades/contigs.fasta \
+    cat "${output}"/spades1/contigs.fasta \
         | awk '{if(substr($0,1,1)==">"){if (p){print "";} print $0} else printf("%s",$0);p++;}END{print ""}' \
         | sed -n '2~2p' \
         | awk 'BEGIN {i=0} {a=substr($0,1,21); b=substr($0,length($0)-21,21); i++; print ">"i; print a; i++; print ">"i; print b }' \
@@ -532,9 +532,7 @@ if [ "$fastq" -eq 1 ]; then
             > "${output}"/"${sampleName}"_all_R2.fastq.gz
     fi
 
-    mv "${output}"/spades "${output}"/spades_1
-
-    [ -d "${output}"/spades ] && rm -rf "${output}"/spades
+    [ -d "${output}"/spades2 ] && rm -rf "${output}"/spades2
     spades.py \
         --only-assembler \
         -t "$cpu" \
@@ -542,7 +540,7 @@ if [ "$fastq" -eq 1 ]; then
         -k "$kmer" \
         --pe1-1 "${output}"/"${sampleName}"_all_R1.fastq.gz \
         --pe1-2 "${output}"/"${sampleName}"_all_R2.fastq.gz \
-        -o "${output}"/spades
+        -o "${output}"/spades2
 
 
      ##### End of 2nd round bainting #####
@@ -550,7 +548,7 @@ if [ "$fastq" -eq 1 ]; then
 
     #make blast database with assembly
     makeblastdb \
-        -in "${output}"/spades/contigs.fasta \
+        -in "${output}"/spades2/contigs.fasta \
         -dbtype "nucl" \
         -parse_seqids \
         -hash_index
@@ -558,7 +556,7 @@ if [ "$fastq" -eq 1 ]; then
     #blast primers on assembly
     blastn \
         -query "$primers" \
-        -db "${output}"/spades/contigs.fasta \
+        -db "${output}"/spades2/contigs.fasta \
         -out "${output}"/blastn.tsv \
         -evalue 1e-3 \
         -word_size 8 \
