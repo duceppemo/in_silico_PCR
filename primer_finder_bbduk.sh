@@ -216,50 +216,6 @@ mem=$(($(grep MemTotal /proc/meminfo | awk '{print $2}')*85/100000000)) #85% of 
 memJava="-Xmx"$mem"g"
 
 
-##########################
-#                        #
-#   Log + Dependencies   #
-#                        #
-##########################
-
-
-#Date
-echo -e "$(date)\n" | tee "${output}"/log.txt
-echo -e "User: $(whoami)" | tee -a "${output}"/log.txt
-echo -e "Processors: "$cpu"" | tee -a "${output}"/log.txt
-echo -e "Memory: "$mem"G" | tee -a "${output}"/log.txt
-
-#pipeline version
-echo -e "\nprimer_finer_bbduk.sh version "$version"\n" | tee -a "${output}"/log.txt  # $0
-
-#check if depenencies are installed
-#if so, log version
-
-# Java
-if hash java 2>/dev/null; then 
-    java -version 2>&1 1>/dev/null | grep "java version" | tr -d '"' | tee -a "${output}"/log.txt
-else
-    echo >&2 "java was not found. Aborting." | tee -a "${output}"/log.txt
-    # exit 1
-fi
-
-# BBDuk
-if hash bbduk.sh 2>/dev/null; then 
-    bbduk.sh -v 2>&1 1>/dev/null | grep "version" | tee -a "${output}"/log.txt
-else
-    echo >&2 "bbduk.sh was not found. Aborting." | tee -a "${output}"/log.txt
-    # exit 1
-fi
-
-# Blast+
-if hash blastn 2>/dev/null; then 
-    blastn -version | tee -a "${output}"/log.txt
-else
-    echo >&2 "blast+ was not found. Aborting." | tee -a "${output}"/log.txt
-    # exit 1
-fi
-
-
 ###########
 #         #
 #   I/O   #
@@ -269,6 +225,50 @@ fi
 
 name="$(basename "$1")" #name without path
 sampleName="$(cut -d "_" -f 1 <<< "${name%%.*}")" #nameR1 with the ".fastq.gz"
+
+
+##########################
+#                        #
+#   Log + Dependencies   #
+#                        #
+##########################
+
+
+#Date
+echo -e "$(date)\n" | tee "${output}"/"${sampleName}"_log.txt
+echo -e "User: $(whoami)" | tee -a "${output}"/"${sampleName}"_log.txt
+echo -e "Processors: "$cpu"" | tee -a "${output}"/"${sampleName}"_log.txt
+echo -e "Memory: "$mem"G" | tee -a "${output}"/"${sampleName}"_log.txt
+
+#pipeline version
+echo -e "\nprimer_finer_bbduk.sh version "$version"\n" | tee -a "${output}"/"${sampleName}"_log.txt  # $0
+
+#check if depenencies are installed
+#if so, log version
+
+# Java
+if hash java 2>/dev/null; then 
+    java -version 2>&1 1>/dev/null | grep "java version" | tr -d '"' | tee -a "${output}"/"${sampleName}"_log.txt
+else
+    echo >&2 "java was not found. Aborting." | tee -a "${output}"/"${sampleName}"_log.txt
+    # exit 1
+fi
+
+# BBDuk
+if hash bbduk.sh 2>/dev/null; then 
+    bbduk.sh -v 2>&1 1>/dev/null | grep "version" | tee -a "${output}"/"${sampleName}"_log.txt
+else
+    echo >&2 "bbduk.sh was not found. Aborting." | tee -a "${output}"/"${sampleName}"_log.txt
+    # exit 1
+fi
+
+# Blast+
+if hash blastn 2>/dev/null; then 
+    blastn -version | tee -a "${output}"/"${sampleName}"_log.txt
+else
+    echo >&2 "blast+ was not found. Aborting." | tee -a "${output}"/"${sampleName}"_log.txt
+    # exit 1
+fi
 
 
 #############################
@@ -451,12 +451,12 @@ if [ "$fastq" -eq 1 ]; then
 
         PCR primers may be found on different contigs and will be rejected as a valid PCR product.
         Best performance is achieve using Illumina 300bp paired-end reads." \
-        | tee -a "${output}"/log.txt
+        | tee -a "${output}"/"${sampleName}"_log.txt
     else
         kmer="21,33,55,77,99,127"
 
         echo ""${read_length}"bp reads detected." \
-        | tee -a "${output}"/log.txt
+        | tee -a "${output}"/"${sampleName}"_log.txt
     fi
 
     # de novo assembly of reads
@@ -481,7 +481,7 @@ if [ "$fastq" -eq 1 ]; then
         | awk '{if(substr($0,1,1)==">"){if (p){print "";} print $0} else printf("%s",$0);p++;}END{print ""}' \
         | sed -n '2~2p' \
         | awk 'BEGIN {i=0} {a=substr($0,1,21); b=substr($0,length($0)-21,21); i++; print ">"i; print a; i++; print ">"i; print b }' \
-        > "${output}"/extra_baits.fasta
+        > "${output}"/"${sampleName}"_extra_baits.fasta
 
     # go fishing extra reads
     if [ "$fastq" -eq 1 ] && [ "$paired" -eq 1 ]; then  # fastq paried-end
@@ -493,7 +493,7 @@ if [ "$fastq" -eq 1 ]; then
             hdist="$mismatch" \
             in1="$1" \
             in2="$2" \
-            ref="${output}"/extra_baits.fasta \
+            ref="${output}"/"${sampleName}"_extra_baits.fasta \
             stats="${output}"/"${sampleName}"_extra_baits.counts \
             outm="${output}"/"${sampleName}"_extra_baits_R1.fastq.gz \
             outm2="${output}"/"${sampleName}"_extra_baits_R2.fastq.gz \
@@ -507,7 +507,7 @@ if [ "$fastq" -eq 1 ]; then
             k=21 \
             hdist="$mismatch" \
             in="$1" \
-            ref="${output}"/extra_baits.fasta \
+            ref="${output}"/"${sampleName}"_extra_baits.fasta \
             stats="${output}"/"${sampleName}"_extra_baits.counts \
             outm="${output}"/"${sampleName}"_extra_baits_R1.fastq.gz \
             ziplevel=9
@@ -557,7 +557,7 @@ if [ "$fastq" -eq 1 ]; then
     blastn \
         -query "$primers" \
         -db "${output}"/spades2/contigs.fasta \
-        -out "${output}"/blastn.tsv \
+        -out "${output}"/"${sampleName}"_blastn.tsv \
         -evalue 1e-3 \
         -word_size 8 \
         -outfmt 6 \
@@ -586,7 +586,7 @@ elif [ "$fasta" -eq 1 ]; then
     blastn \
         -query "$primers" \
         -db "${output}"/"${sampleName}" \
-        -out "${output}"/blastn.tsv \
+        -out "${output}"/"${sampleName}"_blastn.tsv \
         -evalue 1e-3 \
         -word_size 8 \
         -outfmt 6 \
@@ -595,13 +595,13 @@ elif [ "$fasta" -eq 1 ]; then
 fi
 
 #remove duplicates in blast output
-cat "${output}"/blastn.tsv | sort -u -r -k1,1 > "${output}"/tmp
-mv "${output}"/tmp "${output}"/blastn.tsv
+cat "${output}"/"${sampleName}"_blastn.tsv | sort -u -r -k1,1 > "${output}"/tmp
+mv "${output}"/tmp "${output}"/"${sampleName}"_blastn.tsv
 
 # Add header to columns
 echo -e "qaccver\tsaccver\tpident\tlength\tmismatch\tgapopen\tqstart\tqend\tsstart\tsend\tevalue\tbitscore" > "${output}"/tmp
-cat "${output}"/blastn.tsv >> "${output}"/tmp
-mv "${output}"/tmp "${output}"/blastn.tsv
+cat "${output}"/"${sampleName}"_blastn.tsv >> "${output}"/tmp
+mv "${output}"/tmp "${output}"/"${sampleName}"_blastn.tsv
 
 p=""  #previous primer name
 c=""  #prvious contig name
@@ -613,7 +613,7 @@ declare -a positions=()
 #compute PCR product length
 old_IFS=$IFS  # save the field separator           
 IFS=$'\n' # new field separator, the end of line           
-for line in $(cat "${output}"/blastn.tsv | sed '1d')  # skip header    
+for line in $(cat "${output}"/"${sampleName}"_blastn.tsv | sed '1d')  # skip header    
 do          
    # remove carriage return
     l=$(echo "$line" | tr -d "\n" | tr -d "\r")
