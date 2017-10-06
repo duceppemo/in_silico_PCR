@@ -32,7 +32,7 @@ Install the requirements using a combination of conda and pip
 
 `while read requirement; do conda install --yes $requirement; done < requirements.txt`
 
-`pip install OLCTools sipprverse`
+`pip install OLCTools sipprverse biopython`
 
 ## Inputs
 
