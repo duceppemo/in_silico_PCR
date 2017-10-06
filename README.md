@@ -1,37 +1,79 @@
 ## Description
 
-This tool is an attempt to do in silico PCRs from fastq or fasta files. The jellyfish version can only find perfect matches and takes about 3 times longer to get the same results as the bbduk version. It also only reports primer presence or absence. I left it for sentimental values!
+This tool is an attempt to do _in silico_ PCRs from .fastq or .fasta files. 
 
-**primer\_finder\_bbduk.sh** uses bbduk to find the primer sequences in the fastq/fasta file(s). If fastq file(s) are input, it pulls the matching reads out, which are then assembled with SPAdes. Then the primers are BLASTed on the assembly to try to see if both forward and reverse primers can be found in a single contig, thus a valid PCR product. PCR product length is also reported.
+The script ses bbduk to bait reads containing the primer sequences from the .fastq files. It 
+performs a second round of baiting on the original .fastq files with the newly created baited
+.fastq files in order to hopefully have sequence data to span the entire amplicon. Resulting
+double-baited read files are assembled into contigs using SPAdes. 
+The assemblies are BLASTed agains the primer file to determine if both forward and reverse 
+primers can be found in a single contig, thus a valid PCR product. PCR product length is also 
+reported.
 
-The longer the reads in the fastq file(s), the better the assembly and the less false negatives.
+The longer the reads in the fastq file(s), the better the assembly and the fewer false negatives.
 
-## Dependencies
-1. bbduk and dedupe (http://jgi.doe.gov/data-and-tools/bbtools/bb-tools-user-guide/)
+## External Dependencies
+1. bbduk (http://jgi.doe.gov/data-and-tools/bbtools/bb-tools-user-guide/)
 2. SPAdes (http://cab.spbu.ru/software/spades/)
 3. BLAST+ (https://blast.ncbi.nlm.nih.gov/Blast.cgi?PAGE_TYPE=BlastDocs&DOC_TYPE=Download)
+3. conda
+
+## Installation
+Download the repository
+
+`git clone https://github.com/adamkoziol/in_silico_PCR.git`
+
+Enter the _in\_silico\_PCR_ directory
+`cd in_silico_PCR`
+
+Install the requirements using a combination of conda and 
+
+`while read requirement; do conda install --yes $requirement || pip install $requirement; done < requirements.txt`
 
 ## Inputs
 
-1. Primer pair list (fasta). Headers have to end with “_FWR” and “_REV”.
-2. Raw reads (fastq) or assembly (fasta)
-    * Single or multiple single-end reads
-    * **One set of paired-end reads**
-    * Single or multiple genomes (or assemblies)
+1. Primer pair list (fasta). Primer names have to end with “-F” or “-R”. Note: it is possible to have an integer 
+following the direction: >vtx1a-F1 or >vtx1a-F are both acceptable
+2. Raw reads (fastq) or assemblies (fasta)
 
 ## Usage
 
-Typical command line using Illumina's paired-end fastq files:
+Typical command line using:
 ````
-bash primer_finder_bbduk.sh \
-  -q -m \
-  -n 1 \
-  -p primers.fasta \
-  -o output/ \
-  mysample_R1.fastq.gz mysample_R2.fastq.gz
+python primer_finder_bbduk.py PATH -s SEQUENCEPATH -p PRIMERFILEPATH -m NUMBERMISMATCHES
 
 ````
 
-## Notes
+## Options
 
-The first version was based on Jellyfish. It worked well (just detects primer presence or absence), but when I tested bbduk, I was getting the exact same results in a third of the time. Besides speed (btw it takes between 1-2 min to process a pair of fastq files), the main advantage of using bbduk is that it allows up to 3 mismatches. I use 1 mismatch as default.
+````
+
+usage: primer_finder_bbduk.py [-h] -s SEQUENCEPATH [-n CPUS] -p PRIMERFILE
+                              [-m MISMATCHES]
+                              path
+
+Perform in silico PCR using bbduk and SPAdes
+
+positional arguments:
+  path                  Specify input directory
+
+optional arguments:
+  -h, --help            show this help message and exit
+  -s SEQUENCEPATH, --sequencepath SEQUENCEPATH
+                        Path of folder containing .fasta/.fastq(.gz) files to
+                        process.
+  -n CPUS, --cpus CPUS  Number of threads. Default is the number of cores in
+                        the system
+  -p PRIMERFILE, --primerfile PRIMERFILE
+                        Absolute path and name of the primer file (in FASTA
+                        format) to test. The file must haveevery primer on a
+                        separate line AND -F/-R following the name e.g.
+                        >primer1-F ATCGACTGACAC.... 
+                        >primer1-R
+                        ATCGATCGATCGATG.... 
+                        >primer2-F 
+                        .......
+  -m MISMATCHES, --mismatches MISMATCHES
+                        Number of mismatches allowed [0-3]. Default is 0
+
+````
