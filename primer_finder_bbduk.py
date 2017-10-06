@@ -62,8 +62,10 @@ class PrimerFinder(object):
         fasta = list()
         # Get all the files in the sequence path
         for sequencefile in glob(os.path.join(self.sequencepath, '*')):
-            # If the file is not a .fastq file, then consider it a .fasta file
-            if sequencefile not in fastq and not os.path.isdir(sequencefile):
+            # Split the extension from the file
+            extension = os.path.splitext(sequencefile)[1]
+            # If the extension is one of the acceptable FASTA extensions, add it to the list of FASTA files
+            if extension in self.extensions:
                 fasta.append(sequencefile)
         # Use filer from accessoryFunctions to find the base file name of each .fastq file/pair
         fastqnames = filer(fastq)
@@ -612,6 +614,8 @@ class PrimerFinder(object):
         # The default length for the initial baiting - if there are primers shorter than this, then the shortest
         # value will be used
         self.klength = 20
+        # A list of valid file extensions for FASTA formatted-files
+        self.extensions = ['.fasta', '.fa', '.fas', '.fsa', '.fna', '.tfa']
         # Run the script
         self.main()
 

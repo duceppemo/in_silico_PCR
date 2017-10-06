@@ -16,7 +16,9 @@ The longer the reads in the fastq file(s), the better the assembly and the fewer
 1. bbduk (http://jgi.doe.gov/data-and-tools/bbtools/bb-tools-user-guide/)
 2. SPAdes (http://cab.spbu.ru/software/spades/)
 3. BLAST+ (https://blast.ncbi.nlm.nih.gov/Blast.cgi?PAGE_TYPE=BlastDocs&DOC_TYPE=Download)
-3. conda
+4. conda
+5. pip
+
 
 ## Installation
 Download the repository
@@ -26,9 +28,11 @@ Download the repository
 Enter the _in\_silico\_PCR_ directory
 `cd in_silico_PCR`
 
-Install the requirements using a combination of conda and 
+Install the requirements using a combination of conda and pip
 
-`while read requirement; do conda install --yes $requirement || pip install $requirement; done < requirements.txt`
+`while read requirement; do conda install --yes $requirement; done < requirements.txt`
+
+`pip install OLCTools sipprverse`
 
 ## Inputs
 
@@ -38,7 +42,7 @@ following the direction: >vtx1a-F1 or >vtx1a-F are both acceptable
 
 ## Usage
 
-Typical command line using:
+Typical command line usage:
 ````
 python primer_finder_bbduk.py PATH -s SEQUENCEPATH -p PRIMERFILEPATH -m NUMBERMISMATCHES
 
@@ -68,7 +72,8 @@ optional arguments:
                         Absolute path and name of the primer file (in FASTA
                         format) to test. The file must haveevery primer on a
                         separate line AND -F/-R following the name e.g.
-                        >primer1-F ATCGACTGACAC.... 
+                        >primer1-F 
+                        ATCGACTGACAC.... 
                         >primer1-R
                         ATCGATCGATCGATG.... 
                         >primer2-F 
