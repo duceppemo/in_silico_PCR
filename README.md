@@ -17,7 +17,7 @@ The longer the reads in the fastq file(s), the better the assembly and the fewer
 2. SPAdes (http://cab.spbu.ru/software/spades/)
 3. BLAST+ (https://blast.ncbi.nlm.nih.gov/Blast.cgi?PAGE_TYPE=BlastDocs&DOC_TYPE=Download)
 4. conda
-5. pip
+5. pip3
 
 
 ## Installation
@@ -32,7 +32,7 @@ Install the requirements using a combination of conda and pip
 
 `while read requirement; do conda install --yes $requirement; done < requirements.txt`
 
-`pip install OLCTools sipprverse biopython`
+`pip3 install OLCTools sipprverse biopython`
 
 Add the in\_silico\_PCR folder to the $PATH
 
