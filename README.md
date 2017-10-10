@@ -34,6 +34,8 @@ Install the requirements using a combination of conda and pip
 
 `pip install OLCTools sipprverse biopython`
 
+Add the in\_silico\_PCR folder to the $PATH
+
 ## Inputs
 
 1. Primer pair list (fasta). Primer names have to end with “-F” or “-R”. Note: it is possible to have an integer 
@@ -44,9 +46,29 @@ following the direction: >vtx1a-F1 or >vtx1a-F are both acceptable
 
 Typical command line usage:
 ````
-python primer_finder_bbduk.py PATH -s SEQUENCEPATH -p PRIMERFILEPATH -m NUMBERMISMATCHES
+primer_finder_bbduk.py PATH -s SEQUENCEPATH -p PRIMERFILEPATH -m NUMBERMISMATCHES
+````
+
+## Test Dataset
+
+I've provided six genomes in a mixture of FASTA and FASTQ formats to use to test the script on your system. 
+The FASTA files are assemblies, while the FASTQ files are pre-baited files to reduce size. 
+The report you create should match the one in the 'desired_outputs' folder (there may be small
+differences when it comes to the order of genes).
 
 ````
+primer_finder_bbduk.py /path/to/in_silico_PCR/test_data -s /path/to/in_silico_PCR/test_data/sequences 
+-p /path/to/in\_silico\_PCR/test_data/primers.txt
+````
+
+Note that in the provided ePCR.csv report file, in the results for _eae_ there are  four genome 
+locations rather than the expected two. This is due to the fact that there are two separate 
+primer sets for _eae_. This is fine for this output, but if you don't want results like this 
+make sure that the names of the primers are unique.
+
+Additionally, for 2014-SEQ-0121, the FASTQ and FASTA files yield different number of genes. The FASTQ sample has an
+additional gene, _vtx2c_, this is likely due to issues with the assembly that do not always appear when
+assembling with the double-baited reads (the de Bruijn graphs should be much simpler). 
 
 ## Options
 

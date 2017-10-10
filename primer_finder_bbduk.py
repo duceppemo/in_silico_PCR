@@ -9,8 +9,7 @@ from threading import Thread
 from Bio import SeqIO
 from Bio import Seq
 import re
-# from io import StringIO
-# from Bio.Sequencing.Applications import *
+import itertools
 __author__ = 'adamkoziol'
 
 
@@ -284,12 +283,20 @@ class PrimerFinder(object):
                         sample[self.analysistype].outputdir, self.analysistype)
                     # Removed --careful, as there was an issue with the .fastq reads following baiting - something to
                     # do with the names, or the interleaving. Subsequent testing showed no real changes to assemblies
-                    sample[self.analysistype].spadescommand = \
-                        'spades.py -k {} --only-assembler --12 {} -o {} -t {}'\
-                        .format(self.kmers,
-                                sample[self.analysistype].doublebaitedfastq,
-                                sample[self.analysistype].spadesoutput,
-                                self.threads)
+                    if len(sample.general.fastqfiles) == 2:
+                        sample[self.analysistype].spadescommand = \
+                            'spades.py -k {} --only-assembler --12 {} -o {} -t {}'\
+                            .format(self.kmers,
+                                    sample[self.analysistype].doublebaitedfastq,
+                                    sample[self.analysistype].spadesoutput,
+                                    self.threads)
+                    else:
+                        sample[self.analysistype].spadescommand = \
+                            'spades.py -k {} --only-assembler -s {} -o {} -t {}' \
+                            .format(self.kmers,
+                                    sample[self.analysistype].doublebaitedfastq,
+                                    sample[self.analysistype].spadesoutput,
+                                    self.threads)
                     sample[self.analysistype].assemblyfile = os.path.join(sample[self.analysistype].spadesoutput,
                                                                           'contigs.fasta')
                     self.queue.put(sample)
@@ -570,6 +577,20 @@ class PrimerFinder(object):
                     data += '{}\n'.format(sample.name)
             # Write the string to the report
             report.write(data)
+        # Clean up the BLAST database files
+        db = os.path.splitext(self.formattedprimers)[0]
+        # A list of all the file extensions associated with the BLASTdb
+        dbextensions = ['.nhr', '.nin', '.nog', '.nsd', '.nsi', '.nsq']
+        # Iterate through all the files, and delete each one - pass on IO errors
+        for dbfile in zip(itertools.repeat(db), dbextensions):
+            try:
+                os.remove(''.join(dbfile))
+            except IOError:
+                pass
+        try:
+            os.remove(self.formattedprimers)
+        except IOError:
+            pass
 
     def __init__(self, args, analysistype, filetype='fastq'):
         import multiprocessing
