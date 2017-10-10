@@ -6,7 +6,7 @@ The script ses bbduk to bait reads containing the primer sequences from the .fas
 performs a second round of baiting on the original .fastq files with the newly created baited
 .fastq files in order to hopefully have sequence data to span the entire amplicon. Resulting
 double-baited read files are assembled into contigs using SPAdes. 
-The assemblies are BLASTed agains the primer file to determine if both forward and reverse 
+The assemblies are BLASTed against the primer file to determine if both forward and reverse 
 primers can be found in a single contig, thus a valid PCR product. PCR product length is also 
 reported.
 
@@ -46,7 +46,8 @@ following the direction: >vtx1a-F1 or >vtx1a-F are both acceptable
 
 Typical command line usage:
 ````
-primer_finder_bbduk.py PATH -s SEQUENCEPATH -p PRIMERFILEPATH -m NUMBERMISMATCHES
+primer_finder_bbduk.py ABSOLUTE PATH TO FOLDER IN WHICH REPORTS FOLDER TO BE CREATED -s ABSOLUTE PATH TO SEQUENCE FILES 
+-p ABSOLUTE PATH AND NAME OF PRIMER FILE -m NUMBER OF MISMATCHES
 ````
 
 ## Test Dataset
@@ -56,9 +57,12 @@ The FASTA files are assemblies, while the FASTQ files are pre-baited files to re
 The report you create should match the one in the 'desired_outputs' folder (there may be small
 differences when it comes to the order of genes).
 
+NOTE: Please use absolute paths when running the program. If you don't there will probably be 
+errors right at the beginning.
+
 ````
 primer_finder_bbduk.py /path/to/in_silico_PCR/test_data -s /path/to/in_silico_PCR/test_data/sequences 
--p /path/to/in\_silico\_PCR/test_data/primers.txt
+-p /path/to/in_silico_PCR/test_data/primers.txt
 ````
 
 Note that in the provided ePCR.csv report file, in the results for _eae_ there are  four genome 
