@@ -10,6 +10,12 @@ version=0.1
 # TODO -> file cleanup
 # TODO -> Bundle working code into functions
 #         Remove redundant code with functions
+# TODO -> Apply mismatch values to blast too (not just bbduk)
+#      -> Apply more filters for the blast (e.g. when match is shorter than primer length)
+# TODO -> Check/Adjust BLAST evalue to make sure it's OK when 3 mismatches are present
+# TODO -> Change blast parameters for short sequences
+# TODO -> Do proper report file (priming length, mismatch on primers, position of mismatches, etc.)
+# TODO -> Do synthetic gel image of PCR (with marker and samples)
 
 
 ############
@@ -446,11 +452,11 @@ if [ "$fastq" -eq 1 ]; then
         kmer="21,33,55,77"
 
         echo "
-        "${read_length}"bp reads detected.
-        Accuraty of detection of in silico PCR products will likely be negatively affected.
+"${read_length}"bp reads detected.
+Accuraty of detection of in silico PCR products will likely be negatively affected.
 
-        PCR primers may be found on different contigs and will be rejected as a valid PCR product.
-        Best performance is achieve using Illumina 300bp paired-end reads." \
+PCR primers may be found on different contigs and will be rejected as a valid PCR product.
+Best performance is achieve using Illumina 300bp paired-end reads." \
         | tee -a "${output}"/"${sampleName}"_log.txt
     else
         kmer="21,33,55,77,99,127"
