@@ -1,5 +1,6 @@
 #!/usr/bin/env python 3
 from Bio.Blast.Applications import NcbiblastnCommandline
+import spadespipeline.metadataprinter as metadataprinter
 from csv import DictReader
 from accessoryFunctions.accessoryFunctions import *
 from itertools import product
@@ -50,6 +51,7 @@ class PrimerFinder(object):
         self.amplicons()
         printtime('Creating reports', self.start)
         self.reporter()
+        metadataprinter.MetadataPrinter(self)
 
     def filer(self):
         """
@@ -96,7 +98,6 @@ class PrimerFinder(object):
                     raise
             # Initialise the general and run categories
             sample.general = GenObject()
-            sample.run = GenObject()
             # Populate the .fastqfiles category of :self.metadata
             sample.general.fastqfiles = [fastq for fastq in
                                          glob(os.path.join(sample[self.analysistype].outputdir, '{}*.fastq*'
@@ -104,6 +105,7 @@ class PrimerFinder(object):
             # Populate certain attributes in order to be compatible with other local software
             sample.general.bestassemblyfile = sample.general.fastqfiles
             sample.general.trimmedcorrectedfastqfiles = sample.general.fastqfiles
+            sample.general.outputdirectory = sample[self.analysistype].outputdir
             sample[self.analysistype].baitedfastq = os.path.join(
                 sample[self.analysistype].outputdir,
                 '{}_targetMatches.fastq.gz'.format(self.analysistype))
@@ -132,7 +134,6 @@ class PrimerFinder(object):
                     raise
             # Initialise the general and run categories
             sample.general = GenObject()
-            sample.run = GenObject()
             # Populate the .fastqfiles category of :self.metadata
             sample.general.fastqfiles = [fastq for fastq in glob(os.path.join(sample[self.analysistype].outputdir,
                                                                               '{}*{}*'
@@ -140,6 +141,7 @@ class PrimerFinder(object):
                                                                                       os.path.splitext(fastafile)[1])))]
             sample.general.bestassemblyfile = sample.general.fastqfiles
             sample.general.trimmedcorrectedfastqfiles = sample.general.fastqfiles
+            sample.general.outputdirectory = sample[self.analysistype].outputdir
             sample[self.analysistype].baitedfastq = os.path.join(
                 sample[self.analysistype].outputdir,
                 '{}_targetMatches.fastq.gz'.format(self.analysistype))
@@ -402,6 +404,7 @@ class PrimerFinder(object):
                 sample[self.analysistype].blastresults = dict()
                 sample[self.analysistype].contigs = dict()
                 sample[self.analysistype].hits = dict()
+                sample[self.analysistype].mismatches = dict()
                 sample[self.analysistype].blastrecords = list()
                 sample[self.analysistype].range = dict()
                 sample[self.analysistype].genespresent = dict()
@@ -413,7 +416,7 @@ class PrimerFinder(object):
                 for row in blastdict:
                     # Ensure that the hit is full-length, and that the number of mismatches is equal to or lesser
                     # than the supplied cutoff value
-                    if int(row['positives']) == self.faidict[row['subject_id']] and \
+                    if int(row['alignment_length']) == self.faidict[row['subject_id']] and \
                                     int(row['mismatches']) <= self.mismatches:
                         # Add the current row to the list for future work
                         sample[self.analysistype].blastrecords.append(row)
@@ -448,6 +451,24 @@ class PrimerFinder(object):
                             except KeyError:
                                 sample[self.analysistype].hits[contig] = list()
                                 sample[self.analysistype].hits[contig].append(primers)
+
+                            for record in sample[self.analysistype].blastrecords:
+                                for primer in primers:
+                                    if record['query_id'] == contig and record['subject_id'] == primer:
+                                        # Populate the dictionary with the primers
+                                        try:
+                                            sample[self.analysistype].mismatches[contig][gene]\
+                                                .update({primer: int(record['mismatches'])})
+                                        except KeyError:
+                                            try:
+                                                sample[self.analysistype].mismatches[contig][gene] = dict()
+                                                sample[self.analysistype].mismatches[contig][gene] = \
+                                                    {primer: int(record['mismatches'])}
+                                            except KeyError:
+                                                sample[self.analysistype].mismatches[contig] = dict()
+                                                sample[self.analysistype].mismatches[contig][gene] = dict()
+                                                sample[self.analysistype].mismatches[contig][gene] = \
+                                                    {primer: int(record['mismatches'])}
                 # Use query the stored blast dictionary to find the location of the hits
                 for row in sample[self.analysistype].blastrecords:
                     try:
@@ -479,10 +500,10 @@ class PrimerFinder(object):
                                             data = min(int(row['query_start']), int(row['query_end']))
                                         # Add the appropriately calculated value to the range dictionary
                                         try:
-                                            sample[self.analysistype].range[gene].append(data)
+                                            sample[self.analysistype].range[gene].add(data)
                                         except KeyError:
-                                            sample[self.analysistype].range[gene] = list()
-                                            sample[self.analysistype].range[gene].append(data)
+                                            sample[self.analysistype].range[gene] = set()
+                                            sample[self.analysistype].range[gene].add(data)
                                     # Similar to the forward primer, except reverse the min() and max()
                                     elif '-R' in primer:
                                         if int(row['subject_start']) < int(row['subject_end']):
@@ -490,10 +511,10 @@ class PrimerFinder(object):
                                         else:
                                             data = max(int(row['query_start']), int(row['query_end']))
                                         try:
-                                            sample[self.analysistype].range[gene].append(data)
+                                            sample[self.analysistype].range[gene].add(data)
                                         except KeyError:
-                                            sample[self.analysistype].range[gene] = list()
-                                            sample[self.analysistype].range[gene].append(data)
+                                            sample[self.analysistype].range[gene] = set()
+                                            sample[self.analysistype].range[gene].add(data)
                     except KeyError:
                         pass
 
@@ -510,39 +531,47 @@ class PrimerFinder(object):
                 try:
                     # Load the records from the assembly into the dictionary
                     for record in SeqIO.parse(sample[self.analysistype].assemblyfile, 'fasta'):
-                        # Get the forward and reverse primer names from the dictionary
-                        for primerpair in sample[self.analysistype].hits[record.id]:
-                            # Extract the name of the gene from the primer name
-                            genename = primerpair[0].split('-')[0]
-                            # Sort the range calculated above
-                            start = sorted(sample[self.analysistype].range[genename])[0]
-                            end = sorted(sample[self.analysistype].range[genename])[1]
-                            # Slice the gene sequence from the sequence record - remember to subtract one to allow
-                            # for zero-based indexing
-                            genesequence = str(record.seq)[int(start) - 1:int(end)]
-                            # Set the record.id to be the sample name, the contig name, the range, and the primers
-                            record.id = '{}_{}_{}_{}'\
-                                .format(sample.name,
-                                        record.id,
-                                        '_'.join(str(x) for x in sorted(sample[self.analysistype].range[genename])),
-                                        '_'.join(primerpair))
-                            # Clear the record.description
-                            record.description = ''
-                            # Create a seq record from the sliced genome sequence
-                            record.seq = Seq.Seq(genesequence)
-                            # Write the amplicon to file
-                            SeqIO.write(record, ampliconfile, 'fasta')
-                except (FileNotFoundError, KeyError):
+                        try:
+                            # Get the forward and reverse primer names from the dictionary
+                            for primerpair in sample[self.analysistype].hits[record.id]:
+                                # Extract the name of the gene from the primer name
+                                genename = primerpair[0].split('-')[0]
+                                # Sort the range calculated above
+                                start = sorted(sample[self.analysistype].range[genename])[0]
+                                end = sorted(sample[self.analysistype].range[genename])[1]
+                                # Slice the gene sequence from the sequence record - remember to subtract one to allow
+                                # for zero-based indexing
+                                genesequence = str(record.seq)[int(start) - 1:int(end)]
+                                # Set the record.id to be the sample name, the contig name, the range, and the primers
+                                record.id = '{}_{}_{}_{}'\
+                                    .format(sample.name,
+                                            record.id,
+                                            '_'.join(str(x) for x in sorted(sample[self.analysistype].range[genename])),
+                                            '_'.join(primerpair))
+                                # Clear the record.description
+                                record.description = ''
+                                # Create a seq record from the sliced genome sequence
+                                record.seq = Seq.Seq(genesequence)
+                                # Write the amplicon to file
+                                SeqIO.write(record, ampliconfile, 'fasta')
+                        except KeyError:
+                            pass
+                except FileNotFoundError:
                     pass
 
     def reporter(self):
         """
         Create reports of the analyses
         """
+        import operator
         with open(self.report, 'w') as report:
             # Initialise the header
-            data = 'Sample,Gene,GenomeLocation,AmpliconSize,Contig\n'
+            data = 'Sample,Gene,GenomeLocation,AmpliconSize,Contig,ForwardPrimers,ReversePrimers,' \
+                   'ForwardMismatches,ReverseMismatches\n'
             for sample in self.metadata:
+                # Initialise variables to convert attributes from set to list
+                sample[self.analysistype].genes = dict()
+                sample[self.analysistype].ntrange = dict()
                 try:
                     # If there are multiple hits per sample, don't write the sample name on every row; leave a blank
                     # cell at the beginning
@@ -550,11 +579,44 @@ class PrimerFinder(object):
                     # Check to ensure that there were amplicons present
                     if sample[self.analysistype].range:
                         # Iterate through each contig with genes present, and the list of genes on the contig
-                        for contig, genes in sample[self.analysistype].genespresent.items():
-                            # Iterate through the list of genes
-                            for gene in genes:
+                        for contig, genes in sorted(sample[self.analysistype].genespresent.items()):
+                            sample[self.analysistype].genes[contig] = list(genes)
+                            # Iterate through the set of genes
+                            for gene in sorted(genes):
+                                # Determine which primers had the best lowest number of mismatches
+                                # Create variables to store primer names, and number of mismatches
+                                forward = list()
+                                reverse = list()
+                                forwardmismatches = int()
+                                reversemismatches = int()
+                                # Sort the dictionary of mismatches based on the number of mismatches
+                                sorteddict = sorted(sample[self.analysistype].mismatches[contig][gene].items(),
+                                                    key=operator.itemgetter(1))
+                                # For every primer in the sorted dictionary, check to see if it is a forward or
+                                # reverse primer, and determine the number of mismatches; if it is the first primer
+                                # encountered for a gene, add it to the list, as because the dictionary is sorted,
+                                # the number of mismatches should be the best. Additionally, if subsequent primer
+                                # hits have the same number of mismatches, also add them to the list
+                                for entry in sorteddict:
+                                    # Add primer to the list if it is the first primer encountered
+                                    if '-F' in entry[0] and not forward:
+                                        forward.append(entry[0])
+                                        forwardmismatches = entry[1]
+                                    # Add the primer to the list if it has the same number of mismatches as a previous
+                                    # primer in the list
+                                    elif '-F' in entry[0] and entry[1] == forwardmismatches:
+                                        forward.append(entry[0])
+                                        forwardmismatches = entry[1]
+                                    elif '-R' in entry[0] and not reverse:
+                                        reverse.append(entry[0])
+                                        reversemismatches = entry[1]
+                                    elif '-R' in entry[0] and entry[1] == reversemismatches:
+                                        reverse.append(entry[0])
+                                        reversemismatches = entry[1]
+
                                 # Make a variable to prevent writing out this long attribute name multiple times
-                                ntrange = sample[self.analysistype].range[gene]
+                                ntrange = list(sample[self.analysistype].range[gene])
+                                sample[self.analysistype].ntrange[gene] = ntrange
                                 # This first gene for a sample gets the sample name printed
                                 if not multiple:
                                     data += '{},'.format(sample.name)
@@ -562,11 +624,15 @@ class PrimerFinder(object):
                                     data += ','
                                 # Populate the string with the gene name, properly formatted range, the length of
                                 # the amplicon, and the name of the contig on which the gene was found
-                                data += '{},{},{},{}\n'\
+                                data += '{},{},{},{},{},{},{},{}\n'\
                                     .format(gene,
                                             '-'.join(str(x) for x in sorted(ntrange)),
                                             max(ntrange) - min(ntrange),
-                                            contig)
+                                            contig,
+                                            ';'.join(sorted(forward)),
+                                            ';'.join(sorted(reverse)),
+                                            forwardmismatches,
+                                            reversemismatches)
                                 # Set multiple to true for future iterations
                                 multiple = True
                     # If there were no amplicons, add the sample name and nothing else
@@ -575,6 +641,11 @@ class PrimerFinder(object):
                 # If there were no BLAST hits, add the sample name, and nothing else
                 except KeyError:
                     data += '{}\n'.format(sample.name)
+                # Remove attributes that either take up too much room in the .json output, or are not JSON serializable
+                delattr(sample[self.analysistype], "blastresults")
+                delattr(sample[self.analysistype], "genespresent")
+                delattr(sample[self.analysistype], "contigs")
+                delattr(sample[self.analysistype], "range")
             # Write the string to the report
             report.write(data)
         # Clean up the BLAST database files
