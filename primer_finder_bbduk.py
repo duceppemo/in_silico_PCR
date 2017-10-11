@@ -441,10 +441,14 @@ class PrimerFinder(object):
                         # Add -F and -R to the gene, and ensure that both options are in the reformatted list of genes
                         # e.g. vtx2a-F and vtx2a-R in [vtx1a-R, vtx2c-F ,vtx2a-F, vtx2a-R]
                         if gene + '-F' in reformatted and gene + '-R' in reformatted:
-                            # Use a regex to extract the precise primers from the dictionary e.g. vtx2a use to
-                            # find vtx2a-F2_4 and vtx2a-R3_1
-                            primers = [primer for primer in sample[self.analysistype].blastresults[contig]
-                                       if re.match(gene, primer)]
+                            # Extract the precise primers from the dictionary e.g. vtx2a use to
+                            # find vtx2a-F2_4 (forward) and vtx2a-R3_1 (reverse)
+                            forwardprimers = [primer for primer in sample[self.analysistype].blastresults[contig]
+                                              if gene == primer.split('-F')[0]]
+                            reverseprimers = [primer for primer in sample[self.analysistype].blastresults[contig]
+                                              if gene == primer.split('-R')[0]]
+                            # Concatenate the lists
+                            primers = forwardprimers + reverseprimers
                             # Populate the dictionary with the primers
                             try:
                                 sample[self.analysistype].hits[contig].append(primers)
@@ -534,26 +538,29 @@ class PrimerFinder(object):
                         try:
                             # Get the forward and reverse primer names from the dictionary
                             for primerpair in sample[self.analysistype].hits[record.id]:
-                                # Extract the name of the gene from the primer name
-                                genename = primerpair[0].split('-')[0]
-                                # Sort the range calculated above
-                                start = sorted(sample[self.analysistype].range[genename])[0]
-                                end = sorted(sample[self.analysistype].range[genename])[1]
-                                # Slice the gene sequence from the sequence record - remember to subtract one to allow
-                                # for zero-based indexing
-                                genesequence = str(record.seq)[int(start) - 1:int(end)]
-                                # Set the record.id to be the sample name, the contig name, the range, and the primers
-                                record.id = '{}_{}_{}_{}'\
-                                    .format(sample.name,
-                                            record.id,
-                                            '_'.join(str(x) for x in sorted(sample[self.analysistype].range[genename])),
-                                            '_'.join(primerpair))
-                                # Clear the record.description
-                                record.description = ''
-                                # Create a seq record from the sliced genome sequence
-                                record.seq = Seq.Seq(genesequence)
-                                # Write the amplicon to file
-                                SeqIO.write(record, ampliconfile, 'fasta')
+                                if primerpair:
+                                    # Extract the name of the gene from the primer name
+                                    genename = primerpair[0].split('-')[0]
+                                    # Sort the range calculated above
+                                    start = sorted(sample[self.analysistype].range[genename])[0]
+                                    end = sorted(sample[self.analysistype].range[genename])[1]
+                                    # Slice the gene sequence from the sequence record - remember to subtract one to
+                                    # allow for zero-based indexing
+                                    genesequence = str(record.seq)[int(start) - 1:int(end)]
+                                    # Set the record.id to be the sample name, the contig name,
+                                    # the range, and the primers
+                                    record.id = '{}_{}_{}_{}'\
+                                        .format(sample.name,
+                                                record.id,
+                                                '_'.join(str(x) for x in sorted(sample[self.analysistype]
+                                                                                .range[genename])),
+                                                '_'.join(primerpair))
+                                    # Clear the record.description
+                                    record.description = ''
+                                    # Create a seq record from the sliced genome sequence
+                                    record.seq = Seq.Seq(genesequence)
+                                    # Write the amplicon to file
+                                    SeqIO.write(record, ampliconfile, 'fasta')
                         except KeyError:
                             pass
                 except FileNotFoundError:
