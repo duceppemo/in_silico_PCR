@@ -689,7 +689,10 @@ class PrimerFinder(object):
         self.faidict = dict()
         self.filetype = filetype
         # Use a long kmer for SPAdes assembly
-        self.kmers = '127'
+        try:
+            self.kmers = args.kmerlength
+        except AttributeError:
+            self.kmers = '99'
         self.queue = Queue()
         self.blastqueue = Queue()
         # Set the location to send stdout and stderr from system calls
@@ -737,6 +740,11 @@ if __name__ == '__main__':
     parser.add_argument('-m', '--mismatches',
                         default=0,
                         help='Number of mismatches allowed [0-3]. Default is 0')
+    parser.add_argument('-k', '--kmerlength',
+                        default='99',
+                        help='The range of kmers used in SPAdes assembly. Default is 99, but you can'
+                             'provide a comma-separated list of kmers e.g. 21,33,55,77,99,127 or a single kmer e.g. 33')
+
     # Get the arguments into an object
     arguments = parser.parse_args()
     arguments.pipeline = False
