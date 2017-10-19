@@ -728,7 +728,7 @@ if __name__ == '__main__':
     from argparse import ArgumentParser
     parser = ArgumentParser(description='Perform in silico PCR using bbduk and SPAdes')
     parser.add_argument('path',
-                        help='Specify input directory')
+                        help='Specify output directory')
     parser.add_argument('-s', '--sequencepath',
                         required=True,
                         help='Path of folder containing .fasta/.fastq(.gz) files to process.')
