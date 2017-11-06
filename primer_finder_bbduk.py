@@ -672,7 +672,6 @@ class PrimerFinder(object):
         :param ampliconrange: range of the amplicon within the contig
         :param fprimer: name of the forward primer
         :param rprimer: name of the reverse primer
-        :return:
         """
         # Open the file
         with open(sample[self.analysistype].ampliconfile, 'a') as ampliconfile:
@@ -690,7 +689,6 @@ class PrimerFinder(object):
                                 # Slice the gene sequence from the sequence record - remember to subtract one to
                                 # allow for zero-based indexing
                                 genesequence = str(record.seq)[int(start) - 1:int(end)]
-                                print(sample.name, contig, start, end, fprimer, rprimer, genesequence)
                                 # Set the record.id to be the sample name, the contig name,
                                 # the range, and the primers
                                 record.id = '{}_{}_{}_{}' \
