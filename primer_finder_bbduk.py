@@ -441,8 +441,8 @@ class PrimerFinder(object):
                 for contig, genes in sample[self.analysistype].contigs.items():
                     # Split off the primer details (e.g. vtx2a-R3_1 -> vtx2a-R) from the blast results dictionary in
                     # order to create a searchable list of primers
-                    reformatted = ['-'.join([x.split('-')[0], x.split('-')[1][0]])
-                                   for x in sample[self.analysistype].blastresults[contig]]
+                    reformatted = {'-'.join([x.split('-')[0], x.split('-')[1][0]])
+                                   for x in sample[self.analysistype].blastresults[contig]}
                     # Iterate through the list of genes to check if primers are present
                     for gene in genes:
                         # Add -F and -R to the gene, and ensure that both options are in the reformatted list of genes
