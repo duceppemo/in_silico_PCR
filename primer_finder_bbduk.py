@@ -1,6 +1,6 @@
 #!/usr/bin/env python 3
+
 from accessoryFunctions.accessoryFunctions import filer, GenObject, printtime, make_path, MetadataObject
-import spadespipeline.metadataprinter as metadataprinter
 from Bio.Blast.Applications import NcbiblastnCommandline
 from Bio import SeqIO
 from Bio import Seq
@@ -17,6 +17,9 @@ import operator
 import errno
 import time
 import os
+import sys
+
+
 __author__ = 'adamkoziol, duceppemo'
 
 
@@ -57,7 +60,6 @@ class PrimerFinder(object):
         self.ampliconclear()
         printtime('Creating reports', self.start)
         self.reporter()
-        metadataprinter.MetadataPrinter(self)
 
     def filer(self):
         """
@@ -123,7 +125,7 @@ class PrimerFinder(object):
             sample.name = os.path.splitext(os.path.split(fastafile)[-1])[0]
             setattr(sample, self.analysistype, GenObject())
             # Set the destination folder
-            sample[self.analysistype].outputdir = os.path.join(self.sequencepath, sample.name)
+            sample[self.analysistype].outputdir = os.path.join(self.path, 'detailed_reports', sample.name)
             # Make the destination folder
             make_path(sample[self.analysistype].outputdir)
             # Set the file type for the downstream analysis
@@ -183,7 +185,11 @@ class PrimerFinder(object):
                 # from https://stackoverflow.com/a/27552377 - find any degenerate bases in the primer sequence, and
                 # create all possibilities as a list
                 degenerates = Seq.IUPAC.IUPACData.ambiguous_dna_values
-                primerlist = list(map("".join, product(*map(degenerates.get, str(record.seq)))))
+                try:
+                    primerlist = list(map("".join, product(*map(degenerates.get, str(record.seq)))))
+                except TypeError:
+                    print("Invalid Primer Sequence: {}".format(str(record.seq)))
+                    sys.exit()
                 # As the record.id is being updated in the loop below, set the name of the primer here so that will
                 # be able to be recalled when setting the new record.ids
                 primername = record.id
@@ -429,19 +435,21 @@ class PrimerFinder(object):
                         sample[self.analysistype].blastrecords.append(row)
                         # Populate the dictionaries with the contig name (e.g. CA_CFIA-515_NODE_1_length_1791),
                         # the gene name (e.g. vtx2a), and the primer name (e.g. vtx2a-R3_1) as required
+                        # accounts for primer names with "-" in addition to the terminal "-F" or "-R"
                         try:
                             sample[self.analysistype].blastresults[row['query_id']].add(row['subject_id'])
-                            sample[self.analysistype].contigs[row['query_id']].add(row['subject_id'].split('-')[0])
+                            sample[self.analysistype].contigs[row['query_id']].add('-'.join(row['subject_id'].split('-')[:-1]))
                         except KeyError:
                             sample[self.analysistype].blastresults[row['query_id']] = set()
                             sample[self.analysistype].blastresults[row['query_id']].add(row['subject_id'])
                             sample[self.analysistype].contigs[row['query_id']] = set()
-                            sample[self.analysistype].contigs[row['query_id']].add(row['subject_id'].split('-')[0])
+                            sample[self.analysistype].contigs[row['query_id']].add('-'.join(row['subject_id'].split('-')[:-1]))
                 # Check to see if both forward and reverse primers are present for a particular gene within a contig
                 for contig, genes in sample[self.analysistype].contigs.items():
                     # Split off the primer details (e.g. vtx2a-R3_1 -> vtx2a-R) from the blast results dictionary in
                     # order to create a searchable list of primers
-                    reformatted = {'-'.join([x.split('-')[0], x.split('-')[1][0]])
+                    # accounts for primer names with "-" in addition to the terminal "-F" or "-R"
+                    reformatted = {'-'.join(['-'.join(x.split('-')[:-1]), x.split('-')[-1][0]])
                                    for x in sample[self.analysistype].blastresults[contig]}
                     # Iterate through the list of genes to check if primers are present
                     for gene in genes:
@@ -492,7 +500,8 @@ class PrimerFinder(object):
                                 # If the primer is present in the current row, then this is the row of interest
                                 if row['subject_id'] == primer:
                                     # Split off the primer direction and numbering
-                                    gene = primer.split('-')[0]
+                                    # accounts for primer names with "-" in addition to the terminal "-F" or "-R"
+                                    gene = '-'.join(primer.split('-')[:-1])
                                     # Populate a dictionary for storing the genes present - will be used in creating
                                     # the report
                                     try:
@@ -660,7 +669,7 @@ class PrimerFinder(object):
             except IOError:
                 pass
         try:
-            os.remove(self.formattedprimers)
+            os.remove(self.formattedprimers)  # Maybe want to keep this file?
         except IOError:
             pass
 
@@ -748,7 +757,7 @@ class PrimerFinder(object):
                            'query_start', 'query_end', 'query_sequence',
                            'subject_start', 'subject_end', 'subject_sequence']
         # Set and create the report path
-        self.reportpath = os.path.join(self.path, 'reports')
+        self.reportpath = os.path.join(self.path, 'consolidated_report')
         make_path(self.reportpath)
         self.report = os.path.join(self.reportpath, '{}_report.csv'.format(self.analysistype))
         # The default length for the initial baiting - if there are primers shorter than this, then the shortest
@@ -761,7 +770,7 @@ class PrimerFinder(object):
 if __name__ == '__main__':
     parser = ArgumentParser(description='Perform in silico PCR using bbduk and SPAdes')
     parser.add_argument('path',
-                        help='Specify input directory')
+                        help='Specify output directory')
     parser.add_argument('-s', '--sequencepath',
                         required=True,
                         help='Path of folder containing .fasta/.fastq(.gz) files to process.')
