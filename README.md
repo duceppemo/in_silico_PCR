@@ -32,7 +32,7 @@ Install the requirements using a combination of conda and pip
 
 `while read requirement; do conda install --yes $requirement; done < requirements.txt`
 
-`pip install OLCTools sipprverse biopython`
+`pip install OLCTools sipprverse biopython tables==3.4.2`
 
 Add the in\_silico\_PCR folder to the $PATH
 
