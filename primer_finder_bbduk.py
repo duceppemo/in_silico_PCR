@@ -1,4 +1,4 @@
-#!/usr/bin/env python 3
+#!/usr/bin/env python3
 
 from accessoryFunctions.accessoryFunctions import filer, GenObject, printtime, make_path, MetadataObject
 from Bio.Blast.Applications import NcbiblastnCommandline
@@ -8,7 +8,7 @@ from argparse import ArgumentParser
 from itertools import product
 from threading import Thread
 from subprocess import call
-from csv import DictReader
+from csv import DictReader, Sniffer
 from queue import Queue
 import multiprocessing
 from glob import glob
@@ -393,17 +393,25 @@ class PrimerFinder(object):
             # Save the blast command in the metadata
             sample[self.analysistype].blastcommand = str(blastn)
             # Only run blast if the report doesn't exist
-            if not os.path.isfile(sample[self.analysistype].report):
+            # if not os.path.isfile(sample[self.analysistype].report):  # removed because don't want to
+            # delete the blast files between each run when tweaking the settings and or primers
+            try:
+                blastn()
+                # Add header to report
+                blast_header = ['qseqid', 'sseqid', 'positive', 'mismatch', 'gaps', 'evalue', 'bitscore', 'slen',
+                                'length', 'qstart', 'qend', 'qseq', 'sstart', 'send', 'sseq']
+                with open(sample[self.analysistype].report, 'r+') as f:
+                    content = f.read()
+                    f.seek(0, 0)
+                    f.write('\t'.join(blast_header) + '\n' + content)
+            except:
+                self.blastqueue.task_done()
+                self.blastqueue.join()
                 try:
-                    blastn()
-                except:
-                    self.blastqueue.task_done()
-                    self.blastqueue.join()
-                    try:
-                        os.remove(sample[self.analysistype].report)
-                    except IOError:
-                        pass
-                    raise
+                    os.remove(sample[self.analysistype].report)
+                except IOError:
+                    pass
+                raise
             self.blastqueue.task_done()
 
     def parseblast(self):
@@ -421,10 +429,13 @@ class PrimerFinder(object):
                 sample[self.analysistype].blastrecords = list()
                 sample[self.analysistype].range = dict()
                 sample[self.analysistype].genespresent = dict()
+                # Open blast output csv file
+                csvfile = open(sample[self.analysistype].report)
+                # Skip header
+                csvfile.readline()
                 # Open the sequence profile file as a dictionary
-                blastdict = DictReader(open(sample[self.analysistype].report),
-                                       fieldnames=self.fieldnames,
-                                       dialect='excel-tab')
+                blastdict = DictReader(csvfile, fieldnames=self.fieldnames, dialect='excel-tab')
+
                 # Go through each BLAST result
                 for row in blastdict:
                     # Ensure that the hit is full-length, and that the number of mismatches is equal to or lesser
@@ -764,7 +775,7 @@ class PrimerFinder(object):
         # value will be used
         self.klength = 20
         # A list of valid file extensions for FASTA formatted-files
-        self.extensions = ['.fasta', '.fa', '.fas', '.fsa', '.fna', '.tfa']
+        self.extensions = ['.fasta', '.fa', '.fas', '.fsa', '.fna', '.tfa', 'ffn']
 
 
 if __name__ == '__main__':
