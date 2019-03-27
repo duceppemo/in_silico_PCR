@@ -30,7 +30,7 @@ Enter the _in\_silico\_PCR_ directory
 
 Install the requirements using a combination of conda and pip
 
-`while read requirement; do conda install --yes $requirement; done < requirements.txt`
+`conda install --yes $(cat requirements.txt | tr '\n' ' ')`
 
 `pip install OLCTools sipprverse biopython tables==3.4.2`
 
@@ -85,7 +85,7 @@ usage: primer_finder_bbduk.py [-h] -s SEQUENCEPATH [-n CPUS] -p PRIMERFILE
 Perform in silico PCR using bbduk and SPAdes
 
 positional arguments:
-  path                  Specify input directory
+  path                  Specify output directory
 
 optional arguments:
   -h, --help            show this help message and exit
