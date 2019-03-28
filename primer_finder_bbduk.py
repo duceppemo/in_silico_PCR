@@ -642,17 +642,16 @@ class PrimerFinder(object):
                                     data += ','
                                 # Populate the string with the gene name, properly formatted range, the length of
                                 # the amplicon, and the name of the contig on which the gene was found
-                                data += '{},{},{},{},{},{},{},{}\n'\
+                                data += '{},{},{},{},{},{},{},{},{amplicon}\n'\
                                     .format(gene,
                                             '-'.join(str(x) for x in sorted(ntrange)),
-                                            max(ntrange) - min(ntrange),
-                                            contig,
-                                            ';'.join(sorted(forward)),
-                                            ';'.join(sorted(reverse)),
-                                            forwardmismatches,
-                                            reversemismatches)
+                                            max(ntrange) - min(ntrange), contig,
+                                            ';'.join(sorted(forward)), ';'.join(sorted(reverse)),
+                                            forwardmismatches, reversemismatches,
+                                            amplicon=self.pcr_product if self.amplicon else '')
                                 # Set multiple to true for future iterations
-                                multiple = True
+                                # multiple = True
+                                multiple = False
                     # If there were no amplicons, add the sample name and nothing else
                     else:
                         data += '{}\n'.format(sample.name)
@@ -721,6 +720,7 @@ class PrimerFinder(object):
                                 record.description = ''
                                 # Create a seq record from the sliced genome sequence
                                 record.seq = Seq.Seq(genesequence)
+                                self.pcr_product = str(record.seq)
                                 # Write the amplicon to file
                                 SeqIO.write(record, ampliconfile, 'fasta')
                             except IndexError:
@@ -736,6 +736,7 @@ class PrimerFinder(object):
         self.start = args.start
         self.primerfile = args.primerfile
         self.mismatches = int(args.mismatches)
+        self.amplicon = args.amplicon
         try:
             self.metadata = args.runmetadata
         except AttributeError:
@@ -776,6 +777,8 @@ class PrimerFinder(object):
         self.klength = 20
         # A list of valid file extensions for FASTA formatted-files
         self.extensions = ['.fasta', '.fa', '.fas', '.fsa', '.fna', '.tfa', 'ffn']
+        # To add amplified sequence to report
+        self.pcr_product = ''
 
 
 if __name__ == '__main__':
@@ -785,6 +788,9 @@ if __name__ == '__main__':
     parser.add_argument('-s', '--sequencepath',
                         required=True,
                         help='Path of folder containing .fasta/.fastq(.gz) files to process.')
+    parser.add_argument('-a', '--amplicon',
+                        action='store_true',
+                        help='Add the amplicon sequences to the consolidated report.')
     parser.add_argument('-n', '--cpus',
                         help='Number of threads. Default is the number of cores in the system')
     parser.add_argument('-p', '--primerfile',
