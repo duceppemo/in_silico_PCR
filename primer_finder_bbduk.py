@@ -645,7 +645,7 @@ class PrimerFinder(object):
                                 data += '{},{},{},{},{},{},{},{}\n'\
                                     .format(gene,
                                             '-'.join(str(x) for x in sorted(ntrange)),
-                                            max(ntrange) - min(ntrange),
+                                            max(ntrange) - min(ntrange) + 1,
                                             contig,
                                             ';'.join(sorted(forward)),
                                             ';'.join(sorted(reverse)),
